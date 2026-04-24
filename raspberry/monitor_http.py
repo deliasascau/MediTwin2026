@@ -26,7 +26,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field, asdict
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import traceback
@@ -77,6 +77,21 @@ class GlobalState:
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 state = GlobalState()
+serial_link = None
+serial_lock = threading.Lock()
+
+
+def send_serial_command(cmd: str) -> None:
+    """Send a CMD token to ESP32 over serial."""
+    global serial_link
+
+    if serial_link is None:
+        raise RuntimeError("Serial link is not ready")
+
+    wire = f"CMD:{cmd}\n".encode("utf-8")
+    with serial_lock:
+        serial_link.write(wire)
+        serial_link.flush()
 
 # ─── HTTP Handler ──────────────────────────────────────────────────────────
 class MonitorHTTPHandler(BaseHTTPRequestHandler):
@@ -233,17 +248,33 @@ class MonitorHTTPHandler(BaseHTTPRequestHandler):
                 self.send_json_response({"ok": False, "error": f"Unknown command: {cmd}"}, 400)
                 return
             
-            # Log command
+            # Send command to ESP32 (real control path).
+            send_serial_command(cmd)
+
+            # Keep high-level state in sync for /status.
             with state.lock:
+                if cmd == "FAN_ON":
+                    state.fan_manual_on = True
+                elif cmd == "FAN_OFF":
+                    state.fan_manual_on = False
+                elif cmd == "HC_ON":
+                    state.hc_enabled = True
+                elif cmd == "HC_OFF":
+                    state.hc_enabled = False
+                elif cmd == "ALARM_ON":
+                    state.alarm_enabled = True
+                elif cmd == "ALARM_OFF":
+                    state.alarm_enabled = False
+
                 state.command_history.append({
                     "cmd": cmd,
                     "time": time.time(),
-                    "status": "queued"
+                    "status": "sent"
                 })
             
-            log.info("Command received: %s", cmd)
+            log.info("Command sent to ESP32: %s", cmd)
             
-            self.send_json_response({"ok": True, "cmd": cmd, "message": "Command queued"})
+            self.send_json_response({"ok": True, "cmd": cmd, "message": "Command sent"})
             
         except json.JSONDecodeError:
             self.send_json_response({"ok": False, "error": "Invalid JSON"}, 400)
@@ -263,14 +294,8 @@ class MonitorHTTPHandler(BaseHTTPRequestHandler):
         log.debug(format, *args)
 
 # ─── Serial reader thread ──────────────────────────────────────────────────
-def read_serial(port: str, baud: int, stop_event: threading.Event):
-    """Read from ESP32 serial"""
-    try:
-        ser = serial.Serial(port, baud, timeout=3.0, write_timeout=1.0)
-        log.info("Serial opened: %s @ %d baud", port, baud)
-    except Exception as e:
-        log.error("Cannot open %s: %s", port, e)
-        return
+def read_serial(ser: serial.Serial, stop_event: threading.Event):
+    """Read telemetry stream from ESP32 serial."""
 
     try:
         while not stop_event.is_set():
@@ -322,10 +347,19 @@ def read_serial(port: str, baud: int, stop_event: threading.Event):
 # ─── Main ──────────────────────────────────────────────────────────────────
 def run(port: str, baud: int, http_host: str, http_port: int):
     """Main loop with HTTP server"""
+    global serial_link
+
+    try:
+        serial_link = serial.Serial(port, baud, timeout=3.0, write_timeout=1.0)
+        log.info("Serial opened: %s @ %d baud", port, baud)
+    except Exception as e:
+        log.error("Cannot open %s: %s", port, e)
+        return
+
     stop_event = threading.Event()
     
     # Start serial reader thread
-    serial_thread = threading.Thread(target=read_serial, args=(port, baud, stop_event), daemon=True)
+    serial_thread = threading.Thread(target=read_serial, args=(serial_link, stop_event), daemon=True)
     serial_thread.start()
     
     # Start HTTP server
@@ -339,6 +373,13 @@ def run(port: str, baud: int, http_host: str, http_port: int):
         log.info("Shutting down...")
         stop_event.set()
         httpd.shutdown()
+    finally:
+        if serial_link is not None:
+            try:
+                serial_link.close()
+            except Exception:
+                pass
+            serial_link = None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MediTwin Monitor with HTTP Server")

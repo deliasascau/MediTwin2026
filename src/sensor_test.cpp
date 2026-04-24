@@ -71,6 +71,8 @@ static uint32_t  _hcWindowStart  = 0;
 static float     _hcMin          = 9999.0f;
 static float     _hcMax          = 0.0f;
 static int       _hcSamples      = 0;
+static uint32_t  _buzzerLastToggleMs = 0;  // For pulsed beeping
+static bool      _buzzerOn        = false; // Current beep state
 
 static const char *monLevelName(MonLevel level) {
     switch (level) {
@@ -1003,7 +1005,12 @@ void setup() {
     Serial.println("[BOOT] HC alarm OFF (trimite H pentru a activa).");
     printHelp();
     setFanManaged(false);
+    
+    // Startup verification beep
+    setBuzzer(true);
+    delay(200);  // 200ms beep to confirm boot
     setBuzzer(false);
+    
     setLed(0, 20, 0);  // verde dim = idle
 }
 

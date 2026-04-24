@@ -32,8 +32,8 @@
 #define PIN_FAN        19   // Fan via relay / MOSFET
 
 // Buzzer PWM: lower duty = quieter. Frequency changes pitch for passive buzzers.
-#define BUZZER_PWM_FREQ_HZ  1200
-#define BUZZER_DUTY         70    // 0-255, ~27% duty
+#define BUZZER_PWM_FREQ_HZ  300   // Low frequency = soft but audible tone
+#define BUZZER_DUTY         2     // 0-255, ~0.8% duty (active buzzer - minimum volume)
 
 // ─── Butoane ─────────────────────────────────────────────────────────────────
 // Active LOW — buton conectat intre GPIO si GND (INPUT_PULLUP)
