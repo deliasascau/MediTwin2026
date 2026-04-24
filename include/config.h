@@ -31,6 +31,10 @@
 #define PIN_BUZZER     18   // Buzzer
 #define PIN_FAN        19   // Fan via relay / MOSFET
 
+// Buzzer PWM: lower duty = quieter. Frequency changes pitch for passive buzzers.
+#define BUZZER_PWM_FREQ_HZ  1200
+#define BUZZER_DUTY         70    // 0-255, ~27% duty
+
 // ─── Butoane ─────────────────────────────────────────────────────────────────
 // Active LOW — buton conectat intre GPIO si GND (INPUT_PULLUP)
 #define PIN_BTN_SILENCE  15  // Oprire alarma (buzzer snooze 30s / permanent)
@@ -64,7 +68,8 @@
 #define THRESH_TEMP_WARNING  28.0f  // °C
 #define THRESH_TEMP_CRITICAL 32.0f
 #define THRESH_PRESENCE_CM   80.0f  // HC-SR04 presence threshold
-#define DHT_TEMP_RISE_WARNING_C 1.5f // peste baseline la boot
+#define DHT_TEMP_RISE_WARNING_C  1.5f // WARNING daca urca peste baseline cu 1.5°C
+#define DHT_TEMP_RISE_CRITICAL_C 3.0f // CRITICAL daca urca peste baseline cu 3.0°C
 
 // ─── Custom monitor thresholds (latched alarms, reset only from button) ─────
 // LDR critical daca se deviaza mult fata de baseline (atat prea intuneric,

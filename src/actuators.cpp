@@ -8,7 +8,7 @@ void initActuators() {
     ledcAttach(PIN_LED_G, LEDC_FREQ_HZ, LEDC_RESOLUTION);
     ledcAttach(PIN_LED_B, LEDC_FREQ_HZ, LEDC_RESOLUTION);
 
-    // ── Buzzer ────────────────────────────────────────────────────────────────
+    // ── Buzzer — Digital output (full ON/OFF, not PWM) ───────────────────────
     pinMode(PIN_BUZZER, OUTPUT);
     digitalWrite(PIN_BUZZER, LOW);
 
@@ -44,5 +44,5 @@ void setFan(bool on) {
 }
 
 void setBuzzer(bool on) {
-    digitalWrite(PIN_BUZZER, on ? HIGH : LOW);
+    digitalWrite(PIN_BUZZER, on ? HIGH : LOW);  // Full digital ON/OFF for passive buzzer
 }

@@ -49,6 +49,7 @@ typedef enum {
     MON_REASON_LDR_BRIGHT,
     MON_REASON_HC_FLATLINE,
     MON_REASON_DHT_WARNING,
+    MON_REASON_DHT_CRITICAL,
     MON_REASON_MPU_CRITICAL,
     MON_REASON_FAN_NO_CURRENT
 } MonReason;
@@ -86,6 +87,7 @@ static const char *monReasonName(MonReason reason) {
         case MON_REASON_LDR_BRIGHT:   return "LDR deviere mare";
         case MON_REASON_HC_FLATLINE:  return "HC fara fluctuatii";
         case MON_REASON_DHT_WARNING:  return "DHT temp warning";
+        case MON_REASON_DHT_CRITICAL: return "DHT temp critical";
         case MON_REASON_MPU_CRITICAL: return "MPU miscare";
         case MON_REASON_FAN_NO_CURRENT:return "Fan fara curent";
         default:                      return "none";
@@ -123,7 +125,7 @@ static void setMonitorAlarm(MonLevel level, MonReason reason, bool forceFan, uin
         setLed(255, 0, 0);
         setBuzzer(true);
     } else if (level == MON_LEVEL_WARNING) {
-        setLed(255, 220, 0);
+        setLed(0, 0, 255);  // YELLOW only: logical B maps to physical YELLOW
         setBuzzer(true);
     } else {
         setLed(0, 20, 0);
@@ -148,6 +150,9 @@ static void acknowledgeMonitorAlarm(uint32_t now) {
     if (prev == MON_REASON_MQ_CRITICAL || prev == MON_REASON_FAN_NO_CURRENT) {
         Serial.println("[BTN] Recalibrare MQ-3 baseline...");
         mq135Calibrate(20);
+    } else if (prev == MON_REASON_DHT_WARNING || prev == MON_REASON_DHT_CRITICAL) {
+        Serial.println("[BTN] Recalibrare DHT22 baseline...");
+        dhtCalibrate(2, 2200);
     }
 
     resetHcWindow(now);
@@ -697,9 +702,12 @@ static void taskAlarmLogic() {
     int   ldrBase = (ldrBaseline() > 0) ? ldrBaseline() : THRESH_LDR_NORMAL;
     int   ldrCrit = LDR_CRITICAL_OFFSET;
     float dhtWarn = THRESH_TEMP_WARNING;
+    float dhtCrit = THRESH_TEMP_CRITICAL;
     if (dhtBaselineReady()) {
         float relWarn = dhtBaselineTemp() + DHT_TEMP_RISE_WARNING_C;
-        if (relWarn > dhtWarn) dhtWarn = relWarn;
+        float relCrit = dhtBaselineTemp() + DHT_TEMP_RISE_CRITICAL_C;
+        if (relWarn < dhtWarn) dhtWarn = relWarn;
+        if (relCrit < dhtCrit) dhtCrit = relCrit;
     }
     float gyroMag = 0.0f;
     if (mon.mpuOk)
@@ -715,7 +723,8 @@ static void taskAlarmLogic() {
         _ldrTrigSinceMs = 0;
     }
     bool trigLdrCrit      = ldrOverThresh && (now - _ldrTrigSinceMs) >= LDR_DEBOUNCE_MS;
-    bool trigDhtWarn      = mon.dhtOk && mon.temperature >= dhtWarn;
+    bool trigDhtCrit      = mon.dhtOk && mon.temperature >= dhtCrit;
+    bool trigDhtWarn      = mon.dhtOk && mon.temperature >= dhtWarn && !trigDhtCrit;
     bool trigMpuCrit      = mon.mpuOk && gyroMag >= MPU_GYRO_CRITICAL_THRESH;
     bool trigFanNoCurrent = _fanForced && (now - _fanStartMs) > 1000 && fabsf(mon.currentA) < FAN_CURRENT_MIN_A;
 
@@ -736,6 +745,8 @@ static void taskAlarmLogic() {
         }
         if (trigFanNoCurrent) {
             setMonitorAlarm(MON_LEVEL_CRITICAL, MON_REASON_FAN_NO_CURRENT, true, now);
+        } else if (trigDhtCrit) {
+            setMonitorAlarm(MON_LEVEL_CRITICAL, MON_REASON_DHT_CRITICAL, false, now);
         } else if (trigMpuCrit) {
             setMonitorAlarm(MON_LEVEL_CRITICAL, MON_REASON_MPU_CRITICAL, false, now);
         } else if (trigDhtWarn) {
@@ -743,7 +754,7 @@ static void taskAlarmLogic() {
         }
     } else {
         if (_monLevel == MON_LEVEL_WARNING) {
-            setLed(255, 220, 0);
+            setLed(0, 0, 255);  // YELLOW only: logical B maps to physical YELLOW
             setBuzzer(true);
         } else {
             setLed(255, 0, 0);
@@ -776,6 +787,9 @@ static void taskAlarmLogic() {
         } else if (_monReason == MON_REASON_DHT_WARNING) {
             autoRecoverAllowed = true;
             recoveryCond = mon.dhtOk && (mon.temperature < (dhtWarn - DHT_RECOVER_HYST_C));
+        } else if (_monReason == MON_REASON_DHT_CRITICAL) {
+            autoRecoverAllowed = true;
+            recoveryCond = mon.dhtOk && (mon.temperature < (dhtCrit - DHT_RECOVER_HYST_C));
         } else if (_monReason == MON_REASON_FAN_NO_CURRENT) {
             // Auto-recover: daca curentul revine (GND reconectat), iese din CRITICAL singur
             autoRecoverAllowed = true;
@@ -933,7 +947,7 @@ static void taskUart() {
 // ─── setup ───────────────────────────────────────────────────────────────────
 void setup() {
     Serial.begin(115200);
-    delay(2000);
+    delay(1500);
 
     Serial.println("\n+============================================+");
     Serial.println("|  MediTwin AI - Sensor Test & Live Monitor  |");

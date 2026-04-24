@@ -3,11 +3,25 @@
 
 // ─── Protocol overview ────────────────────────────────────────────────────────
 //
-//  ESP32 → Pi  (UART1, TX=GPIO22):
-//    One compact JSON line per telemetry packet, terminated with '\n'
-//    {"ts":12345,"temp":25.30,"hum":60.5,"air":2450,"light":1800,
-//     "dist":45.2,"accel":1.02,"gx":0.01,"gy":0.00,"gz":0.00,
-//     "cur":0.000,"dht":1,"mpu":1,"state":"SAFE","risk":5.0}
+//  ESP32 → Pi  (USB-CDC / Serial):
+//    One JSON line per telemetry packet, terminated with '\n'
+//    {
+//      "timestamp_ms":12345,
+//      "temperature_c":25.30,
+//      "humidity_pct":60.5,
+//      "air_quality_adc":2450,
+//      "light_level_adc":1800,
+//      "distance_cm":45.2,
+//      "accel_g":1.02,
+//      "gyro_x_rad_s":0.01,
+//      "gyro_y_rad_s":0.00,
+//      "gyro_z_rad_s":0.00,
+//      "current_a":0.000,
+//      "dht_ok":true,
+//      "mpu_ok":true,
+//      "fsm_state":"SAFE",
+//      "risk_score":5.0
+//    }
 //
 //  Pi → ESP32  (UART1, RX=GPIO17):
 //    CMD:<COMMAND>\n
@@ -28,12 +42,12 @@ typedef enum {
     PI_CMD_FSM_RESET
 } PiCommand;
 
-// Initialise UART1 (Serial1) at UART_BAUD. Call once in setup().
+// Initialise USB-CDC transport at UART_BAUD. Call once in setup().
 void      initUart();
 
-// Serialise SensorData to JSON and send over UART1.
+// Serialise SensorData to JSON and send over USB-CDC Serial.
 void      sendTelemetry(const SensorData &d, const char *state, float riskScore);
 
-// Read pending bytes from UART1; returns the first complete command found,
+// Read pending bytes from USB-CDC Serial; returns the first complete command found,
 // or PiCommand::NONE. Non-blocking — call every loop iteration.
 PiCommand pollCommand();

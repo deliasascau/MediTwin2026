@@ -23,21 +23,22 @@ void initUart() {
 void sendTelemetry(const SensorData &d, const char *state, float riskScore) {
     JsonDocument doc;
 
-    doc["ts"]    = millis();
-    doc["temp"]  = serialized(String(d.temperature, 2));
-    doc["hum"]   = serialized(String(d.humidity, 1));
-    doc["air"]   = d.airQuality;
-    doc["light"] = d.lightLevel;
-    doc["dist"]  = serialized(String(d.distanceCm, 1));
-    doc["accel"] = serialized(String(d.accelG, 3));
-    doc["gx"]    = serialized(String(d.gyroX, 3));
-    doc["gy"]    = serialized(String(d.gyroY, 3));
-    doc["gz"]    = serialized(String(d.gyroZ, 3));
-    doc["cur"]   = serialized(String(d.currentA, 3));
-    doc["dht"]   = d.dhtOk ? 1 : 0;
-    doc["mpu"]   = d.mpuOk ? 1 : 0;
-    doc["state"] = state;
-    doc["risk"]  = serialized(String(riskScore, 1));
+    // Payload explicit: chei clare + unitati in nume pentru parsare usoara pe Pi.
+    doc["timestamp_ms"]   = millis();
+    doc["temperature_c"]  = serialized(String(d.temperature, 2));
+    doc["humidity_pct"]   = serialized(String(d.humidity, 1));
+    doc["air_quality_adc"] = d.airQuality;
+    doc["light_level_adc"] = d.lightLevel;
+    doc["distance_cm"]    = serialized(String(d.distanceCm, 1));
+    doc["accel_g"]        = serialized(String(d.accelG, 3));
+    doc["gyro_x_rad_s"]   = serialized(String(d.gyroX, 3));
+    doc["gyro_y_rad_s"]   = serialized(String(d.gyroY, 3));
+    doc["gyro_z_rad_s"]   = serialized(String(d.gyroZ, 3));
+    doc["current_a"]      = serialized(String(d.currentA, 3));
+    doc["dht_ok"]         = d.dhtOk;
+    doc["mpu_ok"]         = d.mpuOk;
+    doc["fsm_state"]      = state;
+    doc["risk_score"]     = serialized(String(riskScore, 1));
 
     // Trimite JSON pe Serial (USB-CDC) - Pi citeste pe /dev/ttyACM0
     serializeJson(doc, PI_UART);

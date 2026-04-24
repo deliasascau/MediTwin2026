@@ -93,14 +93,17 @@ FsmState fsmUpdate(const SensorData &d) {
     int critThresh = (mq135Baseline() > 0) ? mq135CritThresh() : THRESH_AIR_CRITICAL;
     int warnThresh = (mq135Baseline() > 0) ? mq135WarnThresh() : THRESH_AIR_WARNING;
     float tempWarn = THRESH_TEMP_WARNING;
+    float tempCrit = THRESH_TEMP_CRITICAL;
     if (dhtBaselineReady()) {
         float relWarn = dhtBaselineTemp() + DHT_TEMP_RISE_WARNING_C;
-        if (relWarn > tempWarn) tempWarn = relWarn;
+        float relCrit = dhtBaselineTemp() + DHT_TEMP_RISE_CRITICAL_C;
+        if (relWarn < tempWarn) tempWarn = relWarn;
+        if (relCrit < tempCrit) tempCrit = relCrit;
     }
     if (_prevFsmState >= FSM_WARNING) { critThresh -= 100; warnThresh -= 100; }
 
     if (d.airQuality >= critThresh) { _prevFsmState = FSM_CRITICAL; return FSM_CRITICAL; }
-    if (d.dhtOk && d.temperature >= THRESH_TEMP_CRITICAL) { _prevFsmState = FSM_CRITICAL; return FSM_CRITICAL; }
+    if (d.dhtOk && d.temperature >= tempCrit) { _prevFsmState = FSM_CRITICAL; return FSM_CRITICAL; }
 
     // Prioritate 2 — MOTION
     if (d.mpuOk && _baselineReady) {
