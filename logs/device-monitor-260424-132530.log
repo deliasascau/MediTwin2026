@@ -1,0 +1,132 @@
+ESP-ROM:esp32c6-20220919
+Build:Sep 19 2022
+rst:0x1 (POWERON),boot:0xc (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:2
+load:0x40875730,len:0x1278
+load:0x4086b910,len:0xdd0
+load:0x4086e610,len:0x3154
+entry 0x4086b910
+
+═══╗
+
+═══╝
+[ACTUATOR] All actuators initialised
+BOOT] Initialising sensors...
+GPIO9
+[SENSOR] DHT22 initialised
+[SENSOR] HC-SR04 ready
+SENSOR] MPU6050 OK
+LDR] Baseline calibrat: 2373  (lumina normala la pornire)
+R] All sensors initialised
+
+MQ135] Baseline calibrat: 1978  (warn=2478  crit=2878)
+yro baseline (500 ms, tine nemiscat)...
+BOOT] FSM activ.
+LOW)
+e.
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+ 8=I2C scan  9=ALL  0=Stability
+-=Fan OFF  B=Buzzer  R=Breathing
+monitor automat)  ?=Help
+
+L]  I:0.131A
+
+─────┐
+│
+─┘
+========= MediTwin Sensors ==========
+TEMP     : 24.2 C
+Y : 26.5 %
+AIR QUAL : 1978
+LIGHT    : 2439
+DISTANCE : 13.1 cm
+CEL    : 1.05 g
+GYRO     : X=-0.03  Y=0.01  Z=-0.02 rad/s
+T  : 0.135 A
+======================================
+
+=MQ135  3=HC-SR04  4=DHT22
+ALL  0=Stability
+zzer  R=Breathing
+)  ?=Help
+
+L]  I:0.132A
+L]  I:0.138A
+L]  I:0.129A
+L]  I:0.140A
+L]  I:0.135A
+
+┐
+│  All Sensors — Single Snapshot         │
+─────────────────┘
+========= MediTwin Sensors ==========
+TEMP     : 24.3 C
+Y : 26.3 %
+AIR QUAL : 1972
+LIGHT    : 2294
+DISTANCE : 13.1 cm
+CEL    : 1.05 g
+GYRO     : X=-0.03  Y=0.01  Z=-0.02 rad/s
+T  : 0.129 A
+======================================
+
+=MQ135  3=HC-SR04  4=DHT22
+ALL  0=Stability
+zzer  R=Breathing
+)  ?=Help
+
+L]  I:0.137A
+L]  I:0.132A
+L]  I:0.133A
+L]  I:0.137A
+L]  I:0.133A
+L]  I:0.127A
+L]  I:0.121A
+L]  I:0.125A
+L]  I:0.136A
+L]  I:0.133A
+L]  I:0.138A
+L]  I:0.138A
+L]  I:0.125A
+L]  I:0.132A
+L]  I:0.129A
+L]  I:0.130A
+L]  I:0.144A
+L]  I:0.128A
+L]  I:0.140A
+L]  I:0.136A
+L]  I:0.122A
+L]  I:0.129A
+L]  I:0.126A
+L]  I:0.130A
+L]  I:0.134A
+L]  I:0.128A
+L]  I:0.125A
+L]  I:0.127A
+L]  I:0.127A
+L]  I:0.133A
+L]  I:0.135A
+L]  I:0.134A
+L]  I:0.122A
+L]  I:0.129A
+L]  I:0.135A
+L]  I:0.124A
+L]  I:0.134A
+L]  I:0.133A
+L]  I:0.138A
+L]  I:0.134A
+L]  I:0.129A
+L]  I:0.135A
+L]  I:0.129A
+L]  I:0.129A
+L]  I:0.142A
+L]  I:0.134A
+L]  I:0.130A
+L]  I:0.134A
+L]  I:0.135A
+L]  I:0.134A
+L]  I:0.135A
+L]  I:0.131A
+L]  I:0.128A

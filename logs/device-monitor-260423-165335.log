@@ -1,0 +1,49 @@
+ESP-ROM:esp32c6-20220919
+Build:Sep 19 2022
+rst:0x1 (POWERON),boot:0xc (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:2
+load:0x40875730,len:0x1278
+load:0x4086b910,len:0xdd0
+load:0x4086e610,len:0x3154
+entry 0x4086b910
+
+╔═══════════════════════════════════════╗
+║  MediTwin AI — Sensor Test & Calibrate ║
+╚═══════════════════════════════════════╝
+[SENSOR] DHT22 initialised
+[SENSOR] HC-SR04 ready
+
+[READY] Hardware initialised.
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22  5=BMP280
+  6=MPU6050  7=ACS712  8=I2C scan  9=ALL  0=Stability
+  L=LED  F=Fan  S=Servo  B=Buzzer  ?=Help
+
+
+┌─────────────────────────────────────────┐
+│  LDR — Light Sensor                    │
+└─────────────────────────────────────────┘
+Cover sensor (dark) then expose to light.
+Press any key to stop.
+
+  ADC raw:  858  |  21.0 %  [DARK]
+  ADC raw:  827  |  20.2 %  [DARK]
+  ADC raw:  850  |  20.8 %  [DARK]
+  ADC raw:  843  |  20.6 %  [DARK]
+  ADC raw:  814  |  19.9 %  [DARK]
+  ADC raw:  800  |  19.5 %  [DARK]
+  ADC raw:  796  |  19.4 %  [DARK]
+  ADC raw:  794  |  19.4 %  [DARK]
+  ADC raw:  852  |  20.8 %  [DARK]
+  ADC raw:  858  |  21.0 %  [DARK]
+  ADC raw:  835  |  20.4 %  [DARK]
+  ADC raw:  844  |  20.6 %  [DARK]
+  ADC raw:  862  |  21.1 %  [DARK]
+  ADC raw:  865  |  21.1 %  [DARK]
+  ADC raw:  825  |  20.1 %  [DARK]
+  ADC raw:  864  |  21.1 %  [DARK]
+  ADC raw:  867  |  21.2 %  [DARK]
+  ADC raw:  838  |  20.5 %  [DARK]
+  ADC raw:  844  |  20.6 %  [DARK]
+  ADC raw:  853  |  20.8 %  [DARK]

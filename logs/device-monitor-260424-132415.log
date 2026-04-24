@@ -1,0 +1,73 @@
+L]  I:0.131A
+L]  I:0.132A
+L]  I:0.136A
+
+┐
+│  LDR — Light Sensor                    │
+─────────────────┘
+nsor (dark) then expose to light.
+Press any key to stop.
+
+C raw: 2452  |  59.9 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2288  |  55.9 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2308  |  56.4 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2327  |  56.8 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2342  |  57.2 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2357  |  57.6 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2371  |  57.9 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2382  |  58.2 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2392  |  58.4 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2402  |  58.7 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2411  |  58.9 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2419  |  59.1 %  [NORMAL]  (baseline: 2419)
+ ADC raw: 2427  |  59.3 %  [NORMAL]  (baseline: 2419)
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+C scan  9=ALL  0=Stability
+ OFF  B=Buzzer  R=Breathing
+or automat)  ?=Help
+
+L]  I:0.129A
+L]  I:0.134A
+
+┐
+│  HC-SR04 — Distance / Presence         │
+─────────────────┘
+d in front. Max reliable range ~300 cm.
+
+
+  Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+ Distance:   13.1 cm  [PRESENCE]
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+C scan  9=ALL  0=Stability
+ OFF  B=Buzzer  R=Breathing
+or automat)  ?=Help
+
+L]  I:0.127A

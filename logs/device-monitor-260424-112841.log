@@ -1,0 +1,23 @@
+SP-ROM:esp32c6-20220919
+ild:Sep 19 2022
+)
+SPIWP:0xee
+mode:DIO, clock div:2
+
+load:0x4086b910,len:0xdd0
+load:0x4086e610,len:0x3154
+x4086b910
+
+═══════════════════╗
+  MediTwin AI — Sensor Test & Calibrate ║
+═════════════╝
+alised
+[SENSOR] HC-SR04 ready
+
+
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+2C scan  9=ALL  0=Stability
+n OFF  B=Buzzer  R=Breathing
+tor automat)  ?=Help
+

@@ -1,0 +1,37 @@
+
+┐
+│  Fan Test (relay/MOSFET)                 │
+─────────────────┘
+  → watch ACS712 current rise if wired in series.
+Fan  → ON
+ Current while ON: -9.554 A
+[ACTUATOR] Fan  → OFF
+
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+2C scan  9=ALL  0=Stability
+=Breathing
+lp
+
+
+┐
+│  Fan Test (relay/MOSFET)                 │
+─────────────────┘
+  → watch ACS712 current rise if wired in series.
+Fan  → ON
+ Current while ON: -9.786 A
+[ACTUATOR] Fan  → OFF
+
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+2C scan  9=ALL  0=Stability
+=Breathing
+lp
+
+nknown command ''. Send '?' for help.
+
+R04  4=DHT22
+ty
+  L=LED  F=Fan  S=Servo  B=Buzzer  R=Breathing
+rm  A=FSM Alarm (monitor automat)  ?=Help
+

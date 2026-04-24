@@ -1,0 +1,57 @@
+ESP-ROM:esp32c6-20220919
+Build:Sep 19 2022
+rst:0x1 (POWERON),boot:0xc (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:2
+load:0x40875730,len:0x1278
+load:0x4086b910,len:0xdd0
+load:0x4086e610,len:0x3154
+entry 0x4086b910
+
+═══════════════════╗
+║  MediTwin AI — Sensor Test & Calibrate ║
+═════════════╝
+alised
+[SENSOR] HC-SR04 ready
+
+
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+2C scan  9=ALL  0=Stability
+=Breathing
+lp
+
+
+┐
+│  ACS712 — Current Sensor + Calibration │
+─────────────────┘
+No load connected — reading zero-current offset.
+
+ Zero-current raw ADC : 1270
+  Zero-current voltage : 1.0234 V
+ Configured MIDPOINT  : 1551  (config.h)
+
+— update ACS712_MIDPOINT to 1270 in config.h
+
+urrent. Press any key to stop.
+
+DHT22
+  6=MPU6050  7=ACS712  8=I2C scan  9=ALL  0=Stability
+LED  F=Fan  S=Servo  B=Buzzer  R=Breathing
+SM Alarm (monitor automat)  ?=Help
+
+Unknown command '
+?' for help.
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+7=ACS712  8=I2C scan  9=ALL  0=Stability
+  B=Buzzer  R=Breathing
+utomat)  ?=Help
+
+nknown command ''. Send '?' for help.
+
+R04  4=DHT22
+ty
+  L=LED  F=Fan  S=Servo  B=Buzzer  R=Breathing
+rm  A=FSM Alarm (monitor automat)  ?=Help
+

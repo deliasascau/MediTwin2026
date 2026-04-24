@@ -1,0 +1,45 @@
+
+┐
+│  RGB LED Test                            │
+─────────────────┘
+D
+ → GREEN
+ → BLUE
+ → ORANGE
+ → MAGENTA
+ → CYAN
+ → WHITE
+ → OFF
+ Brightness sweep (green)...
+ Done.
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+712  8=I2C scan  9=ALL  0=Stability
+ON  -=Fan OFF  B=Buzzer  R=Breathing
+rm (monitor automat)  ?=Help
+
+ help.
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+12  8=I2C scan  9=ALL  0=Stability
+N  -=Fan OFF  B=Buzzer  R=Breathing
+m (monitor automat)  ?=Help
+
+
+┐
+│  Buzzer Test                             │
+─────────────────┘
+ 3 beeps done.
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+0  7=ACS712  8=I2C scan  9=ALL  0=Stability
+  +=Fan ON  -=Fan OFF  B=Buzzer  R=Breathing
+=FSM Alarm (monitor automat)  ?=Help
+
+ '?' for help.
+
+  1=LDR  2=MQ135  3=HC-SR04  4=DHT22
+  7=ACS712  8=I2C scan  9=ALL  0=Stability
+ +=Fan ON  -=Fan OFF  B=Buzzer  R=Breathing
+FSM Alarm (monitor automat)  ?=Help
+
