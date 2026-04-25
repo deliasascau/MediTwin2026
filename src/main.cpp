@@ -1,246 +1,287 @@
 #include <Arduino.h>
-#include "config.h"
-#include "sensors.h"
-#include "mq135.h"
-#include "actuators.h"
-#include "uart_comm.h"
-#include "alarm_fsm.h"
-#include "buttons.h"
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <DHT.h>
+#include <Wire.h>
+#include <MPU6050.h>
+#include <ESP32Servo.h>
+#include <time.h>
+#include <math.h>
 
-// ─── Forward declarations ─────────────────────────────────────────────────────
-static const char *classifyState(const SensorData &d);
-static float       computeRisk(const SensorData &d);
-static void        applyLocalSafety(const SensorData &d);
-static void        handleCommand(PiCommand cmd);
-static void        handleButtonEvent(BtnEvent evt);
-static int         currentAirWarnThreshold();
-static int         currentAirCritThreshold();
-static float       currentTempWarnThreshold();
+// ===== WiFi / Backend =====
+static const char* WIFI_SSID = "test";
+static const char* WIFI_PASSWORD = "DN18062022";
+static const char* HEALTH_URL = "https://residency-resistant-perfected.ngrok-free.dev/health";
+static const char* INGEST_URL = "https://residency-resistant-perfected.ngrok-free.dev/ingest";
 
-// ─── setup ───────────────────────────────────────────────────────────────────
-void setup() {
-    Serial.begin(115200);
-    delay(1500);   // wait for USB CDC to enumerate on ESP32-C6
+// ===== Pins =====
+static const int PIN_DHT = 4;
+static const int PIN_MQ135 = 34;
+static const int PIN_LDR = 35;
+static const int PIN_ACS712 = 32;
+static const int PIN_HCSR04_TRIG = 25;
+static const int PIN_HCSR04_ECHO = 26;
+static const int PIN_SERVO = 27;
+static const int PIN_I2C_SDA = 21;
+static const int PIN_I2C_SCL = 22;
 
-    Serial.println("\n================================================");
-    Serial.println("  MediTwin AI — ESP32-C6  |  Booting...        ");
-    Serial.println("================================================\n");
+// ===== Sensors / Actuators =====
+#define DHT_TYPE DHT22
+DHT dht(PIN_DHT, DHT_TYPE);
+MPU6050 mpu;
+Servo ventServo;
 
-    initActuators();
-    ledSelfTest();
+// ===== Timing =====
+static const uint32_t LOOP_MS = 1000;
+uint32_t lastLoopMs = 0;
+uint32_t lastWifiReconnectMs = 0;
 
-    Serial.println("[BOOT] Initialising sensors...");
-    initSensors();
+// ===== ACS712 calibration =====
+float acsOffsetRaw = 0.0f;
+static const float ADC_VREF = 3.3f;
+static const float ADC_MAX = 4095.0f;
+static const float ACS_SENSITIVITY_V_PER_A = 0.185f; // ACS712 5A
 
-    Serial.printf("[BOOT] MQ-3 warm-up (%d ms)...\n", MQ135_WARMUP_MS);
-    delay(MQ135_WARMUP_MS);
-    mq135Calibrate(MQ135_CAL_SAMPLES);
+// ===== State =====
+int currentServoAngle = 90;
+bool mpuOk = false;
 
-    Serial.println("[BOOT] DHT22 baseline calibration...");
-    dhtCalibrate(DHT_CAL_SAMPLES, DHT_CAL_INTERVAL_MS);
+// ---------- Helpers ----------
+float readDistanceCm() {
+  digitalWrite(PIN_HCSR04_TRIG, LOW);
+  delayMicroseconds(2);
+  digitalWrite(PIN_HCSR04_TRIG, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(PIN_HCSR04_TRIG, LOW);
 
-    Serial.println("[BOOT] HC-SR04 baseline calibration...");
-    hcsr04Calibrate(HCSR04_CAL_SAMPLES);
-
-    Serial.println("[BOOT] ACS712 zero-current calibration...");
-    setFan(false);
-    acs712Calibrate(ACS712_CAL_SAMPLES);
-
-    // Calibrare baseline gyro pentru FSM
-    Serial.println("[BOOT] Calibrare FSM gyro baseline...");
-    float gxB = 0, gyB = 0, gzB = 0;
-    calibrateMpuGyroBaseline(gxB, gyB, gzB, MPU_GYRO_CAL_MS);
-    fsmInit(gxB, gyB, gzB);
-    Serial.println("[BOOT] FSM ready.");
-
-    Serial.println("[BOOT] Initialising UART (Raspberry Pi)...");
-    initUart();
-
-    Serial.println("[BOOT] Initialising buttons...");
-    initButtons();
-
-    Serial.println("[BOOT] System ready.\n");
-    setLed(0, 20, 0);  // dim green = idle + safe
+  unsigned long duration = pulseIn(PIN_HCSR04_ECHO, HIGH, 30000UL); // 30ms timeout
+  if (duration == 0) return NAN;
+  return (duration * 0.0343f) / 2.0f;
 }
 
-// ─── loop ────────────────────────────────────────────────────────────────────
-void loop() {
-    static uint32_t lastSensor = 0;
-    static uint32_t lastSend   = 0;
+void connectWiFiBlocking() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-    if (millis() - lastSensor >= SENSOR_INTERVAL_MS) {
-        lastSensor = millis();
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+  Serial.print("[WIFI] Connected, IP=");
+  Serial.println(WiFi.localIP());
+}
 
-        SensorData  data  = collectAll();
-        float       score = computeRisk(data);
-        const char *state = classifyState(data);
+void syncTimeBlocking() {
+  configTime(0, 0, "pool.ntp.org");
 
-        printSensorData(data);
-        Serial.printf("STATE: %s  |  RISK SCORE: %.0f\n\n", state, score);
+  time_t now = time(nullptr);
+  while (now < 1700000000) {
+    delay(500);
+    Serial.print("*");
+    now = time(nullptr);
+  }
+  Serial.println();
+  Serial.print("[NTP] UNIX=");
+  Serial.println((long)now);
+}
 
-        applyLocalSafety(data);
+void checkBackendHealth() {
+  if (WiFi.status() != WL_CONNECTED) return;
 
-        // Trimite telemetrie la Pi prin UART
-        if (millis() - lastSend >= SEND_INTERVAL_MS) {
-            lastSend = millis();
-            sendTelemetry(data, state, score);
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient https;
+  if (!https.begin(client, HEALTH_URL)) {
+    Serial.println("[HEALTH] begin failed");
+    return;
+  }
+
+  int code = https.GET();
+  Serial.printf("[HEALTH] code=%d\n", code);
+  https.end();
+}
+
+void calibrateACS712() {
+  const int samples = 200;
+  uint64_t sum = 0;
+
+  for (int i = 0; i < samples; i++) {
+    sum += analogRead(PIN_ACS712);
+    delay(5);
+  }
+
+  acsOffsetRaw = (float)sum / (float)samples;
+  Serial.print("[ACS712] Offset raw=");
+  Serial.println(acsOffsetRaw, 2);
+}
+
+float rawToCurrentA(float raw) {
+  float deltaRaw = raw - acsOffsetRaw;
+  float deltaV = (deltaRaw / ADC_MAX) * ADC_VREF;
+  return deltaV / ACS_SENSITIVITY_V_PER_A;
+}
+
+bool readMPU(float &ax, float &ay, float &az, float &tempC) {
+  if (!mpuOk) return false;
+
+  int16_t axRaw, ayRaw, azRaw, gxRaw, gyRaw, gzRaw, tRaw;
+  mpu.getMotion6(&axRaw, &ayRaw, &azRaw, &gxRaw, &gyRaw, &gzRaw);
+  tRaw = mpu.getTemperature();
+
+  ax = (float)axRaw / 16384.0f; // default +/-2g
+  ay = (float)ayRaw / 16384.0f;
+  az = (float)azRaw / 16384.0f;
+  tempC = (float)tRaw / 340.0f + 36.53f;
+  return true;
+}
+
+bool postPayloadAndHandleServo(const String &payload, int &httpCodeOut) {
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient https;
+  if (!https.begin(client, INGEST_URL)) {
+    httpCodeOut = -1;
+    return false;
+  }
+
+  https.addHeader("Content-Type", "application/json");
+  int httpCode = https.POST((uint8_t*)payload.c_str(), payload.length());
+  httpCodeOut = httpCode;
+
+  bool ok = false;
+  if (httpCode > 0) {
+    String resp = https.getString();
+
+    JsonDocument rdoc;
+    DeserializationError err = deserializeJson(rdoc, resp);
+    if (!err) {
+      if (rdoc["servoAngleDeg"].is<int>()) {
+        int newAngle = rdoc["servoAngleDeg"].as<int>();
+        if (newAngle < 0) newAngle = 0;
+        if (newAngle > 180) newAngle = 180;
+
+        if (newAngle != currentServoAngle) {
+          currentServoAngle = newAngle;
+          ventServo.write(currentServoAngle);
         }
+      }
+      ok = true;
+    }
+  }
 
-        // Citeste comanda de la Pi
-        PiCommand cmd = pollCommand();
-        handleCommand(cmd);
+  https.end();
+  return ok;
+}
+
+// ---------- Setup / Loop ----------
+void setup() {
+  Serial.begin(115200);
+  delay(200);
+
+  analogReadResolution(12);
+
+  pinMode(PIN_HCSR04_TRIG, OUTPUT);
+  pinMode(PIN_HCSR04_ECHO, INPUT);
+
+  dht.begin();
+
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+  mpu.initialize();
+  mpuOk = mpu.testConnection();
+
+  ventServo.setPeriodHertz(50);
+  ventServo.attach(PIN_SERVO, 500, 2400);
+  ventServo.write(currentServoAngle);
+
+  calibrateACS712();
+  connectWiFiBlocking();
+  syncTimeBlocking();
+  checkBackendHealth();
+
+  Serial.println("[BOOT] Ready");
+}
+
+void loop() {
+  uint32_t nowMs = millis();
+  if (nowMs - lastLoopMs < LOOP_MS) return;
+  lastLoopMs = nowMs;
+
+  // Keep WiFi alive
+  if (WiFi.status() != WL_CONNECTED) {
+    if (nowMs - lastWifiReconnectMs > 2000) {
+      lastWifiReconnectMs = nowMs;
+      WiFi.reconnect();
     }
 
-    // Butoanele se verifica la FIECARE iteratie de loop (nu doar la intervalul senzorilor)
-    BtnEvent evt = pollButtons();
-    if (evt != BTN_EVT_NONE) handleButtonEvent(evt);
+    Serial.printf("ts=%ld wifi=0 skip_post=1\n", (long)time(nullptr));
+    return; // Skip POST while disconnected
+  }
+
+  time_t ts = time(nullptr);
+
+  // Read sensors
+  float airTempC = dht.readTemperature();
+  float humidityPct = dht.readHumidity();
+
+  int airQualityRaw = analogRead(PIN_MQ135);
+  int lightRaw = analogRead(PIN_LDR);
+
+  float lidDistanceCm = readDistanceCm();
+  bool lidOpen = !isnan(lidDistanceCm) && lidDistanceCm > 5.0f;
+
+  float accelX = NAN, accelY = NAN, accelZ = NAN, mpuTempC = NAN;
+  readMPU(accelX, accelY, accelZ, mpuTempC);
+
+  float acsRaw = (float)analogRead(PIN_ACS712);
+  float heaterCurrentA = rawToCurrentA(acsRaw);
+  bool heaterActive = fabsf(heaterCurrentA) > 0.1f;
+
+  // Build payload
+  JsonDocument doc;
+  doc["ts"] = (int)ts;
+
+  if (!isnan(airTempC)) doc["airTempC"] = airTempC;
+  if (!isnan(humidityPct)) doc["humidityPct"] = humidityPct;
+  doc["airQualityRaw"] = airQualityRaw;
+  doc["lightRaw"] = lightRaw;
+
+  if (!isnan(lidDistanceCm)) doc["lidDistanceCm"] = lidDistanceCm;
+  doc["lidOpen"] = lidOpen;
+
+  if (!isnan(accelX)) doc["accelX"] = accelX;
+  if (!isnan(accelY)) doc["accelY"] = accelY;
+  if (!isnan(accelZ)) doc["accelZ"] = accelZ;
+  if (!isnan(mpuTempC)) doc["mpuTempC"] = mpuTempC;
+
+  doc["heaterCurrentA"] = heaterCurrentA;
+  doc["heaterActive"] = heaterActive;
+  doc["servoAngleDeg"] = currentServoAngle;
+
+  String payload;
+  serializeJson(doc, payload);
+
+  int httpCode = -999;
+  bool parsedOk = postPayloadAndHandleServo(payload, httpCode);
+
+  // Compact debug line
+  Serial.printf(
+    "ts=%ld wifi=1 http=%d ok=%d t=%.2f h=%.2f aq=%d ldr=%d dist=%.2f lid=%d i=%.3f heat=%d servo=%d\n",
+    (long)ts,
+    httpCode,
+    parsedOk ? 1 : 0,
+    isnan(airTempC) ? -999.0f : airTempC,
+    isnan(humidityPct) ? -999.0f : humidityPct,
+    airQualityRaw,
+    lightRaw,
+    isnan(lidDistanceCm) ? -1.0f : lidDistanceCm,
+    lidOpen ? 1 : 0,
+    heaterCurrentA,
+    heaterActive ? 1 : 0,
+    currentServoAngle
+  );
 }
-
-// ─── handleButtonEvent ────────────────────────────────────────────────────
-static void handleButtonEvent(BtnEvent evt) {
-    static uint32_t silenceUntil   = 0;  // 0 = buzzer activ
-    static bool     standby        = false;
-    static bool     permSilence    = false;
-    uint32_t        now            = millis();
-
-    switch (evt) {
-
-        case BTN_EVT_SILENCE_SHORT:
-            // Silentiere 30 s — LED ramane, FSM continua
-            permSilence = false;
-            silenceUntil = now + 30000UL;
-            setBuzzer(false);
-            Serial.println("[BTN] Alarma silentiata 30 s");
-            break;
-
-        case BTN_EVT_REARM:
-            // Apasare medie (1-3s) — rearmare FSM
-            standby     = false;
-            permSilence = false;
-            silenceUntil = 0;
-            fsmInit(0, 0, 0);
-            setLed(0, 20, 0);
-            Serial.println("[BTN] FSM rearmat");
-            break;
-
-        case BTN_EVT_STANDBY:
-            // Apasare lunga (>3s) — toggle standby
-            standby = !standby;
-            if (standby) {
-                setBuzzer(false);
-                setFan(false);
-                setLed(0, 0, 5);
-                Serial.println("[BTN] Sistem in STANDBY");
-            } else {
-                fsmInit(0, 0, 0);
-                setLed(0, 20, 0);
-                permSilence = false;
-                silenceUntil = 0;
-                Serial.println("[BTN] Sistem REACTIVAT");
-            }
-            break;
-
-        default: break;
-    }
-
-    // Expirare snooze: re-armeaza buzzerul daca FSM e inca in alarma
-    if (!permSilence && silenceUntil != 0 && now >= silenceUntil) {
-        silenceUntil = 0;
-        Serial.println("[BTN] Snooze expirat — buzzerul se rearmeaza");
-    }
-
-    // In standby: FSM-ul NU aplica actuatoare (suprascrie orice)
-    // Variabila standby e locala acestei functii — o expunem prin getter simplu
-    // (nu e nevoie de extern, main.cpp o foloseste local)
-    (void)standby;  // folosita deasupra, suprima warning
-}
-
-// ─── classifyState ───────────────────────────────────────────────────────────
-// Local classification — runs even when WiFi is down (safety fallback)
-static const char *classifyState(const SensorData &d) {
-    int airCrit = currentAirCritThreshold();
-    int airWarn = currentAirWarnThreshold();
-    float tempWarn = currentTempWarnThreshold();
-
-    if (d.airQuality >= airCrit ||
-        d.temperature >= THRESH_TEMP_CRITICAL) return "CRITICAL";
-
-    if (d.airQuality >= airWarn ||
-        d.temperature >= tempWarn)  return "WARNING";
-
-    return "SAFE";
-}
-
-// ─── computeRisk — weighted additive score (0–100) ───────────────────────────
-static float computeRisk(const SensorData &d) {
-    float score = 0;
-    int airCrit = currentAirCritThreshold();
-    int airWarn = currentAirWarnThreshold();
-    float tempWarn = currentTempWarnThreshold();
-
-    if      (d.airQuality  >= airCrit)  score += 40;
-    else if (d.airQuality  >= airWarn)  score += 20;
-
-    if      (d.temperature >= THRESH_TEMP_CRITICAL) score += 30;
-    else if (d.temperature >= tempWarn)             score += 15;
-
-    if (d.distanceCm > 0 && d.distanceCm < THRESH_PRESENCE_CM) score += 15;
-
-    if (d.mpuOk && d.accelG > 1.3f) score += 10;  // vibration / tamper
-
-    return score;
-}
-
-// ─── applyLocalSafety ────────────────────────────────────────────────────────
-// LED + Buzzer → controlate de FSM.  Fan → logica locala.
-// Raspberry commands (handleCommand) pot suprascrie aceasta functie.
-static void applyLocalSafety(const SensorData &d) {
-    FsmState state = fsmUpdate(d);
-    fsmApplyActuators(state);
-
-    int airCrit = currentAirCritThreshold();
-    int airWarn = currentAirWarnThreshold();
-    float tempWarn = currentTempWarnThreshold();
-
-    // Fan controlat direct dupa stare
-    if (d.airQuality >= airCrit ||
-        d.temperature >= THRESH_TEMP_CRITICAL) {
-        fsmSetFan(true);  setFan(true);
-    } else if (d.airQuality >= airWarn ||
-               d.temperature >= tempWarn) {
-        fsmSetFan(true);  setFan(true);
-    } else {
-        fsmSetFan(false); setFan(false);
-    }
-}
-
-static int currentAirWarnThreshold() {
-    return (mq135Baseline() > 0) ? mq135WarnThresh() : THRESH_AIR_WARNING;
-}
-
-static int currentAirCritThreshold() {
-    return (mq135Baseline() > 0) ? mq135CritThresh() : THRESH_AIR_CRITICAL;
-}
-
-static float currentTempWarnThreshold() {
-    float t = THRESH_TEMP_WARNING;
-    if (dhtBaselineReady()) {
-        float relWarn = dhtBaselineTemp() + DHT_TEMP_RISE_WARNING_C;
-        if (relWarn > t) t = relWarn;
-    }
-    return t;
-}
-
-// ─── handleCommand ───────────────────────────────────────────────────────────
-static void handleCommand(PiCommand cmd) {
-    switch (cmd) {
-        case PI_CMD_FAN_ON:      fsmSetFan(true);  setFan(true);   break;
-        case PI_CMD_FAN_OFF:     fsmSetFan(false); setFan(false);  break;
-        case PI_CMD_ALARM_ON:    setBuzzer(true);                  break;
-        case PI_CMD_ALARM_OFF:   setBuzzer(false);                 break;
-        case PI_CMD_FSM_RESET:   fsmInit(0, 0, 0);                 break;
-        default: break;
-    }
-}
-
-

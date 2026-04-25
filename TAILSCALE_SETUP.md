@@ -135,3 +135,34 @@ sudo systemctl enable meditwin-monitor
 sudo systemctl start meditwin-monitor
 sudo systemctl status meditwin-monitor
 ```
+
+## 8. UART-over-TCP Bridge (Windows <-> Raspberry)
+
+Cand ESP32 e conectat la laptop (COM) si Raspberry trebuie sa citeasca telemetria prin retea:
+
+Pe Windows (masina cu ESP32 pe USB):
+
+```powershell
+python serial_bridge.py --serial-port COM8 --baud 115200 --host 0.0.0.0 --tcp-port 7000
+```
+
+Pe Raspberry (prin Tailscale):
+
+```bash
+python3 raspberry/monitor.py --tcp-host <WINDOWS_TAILSCALE_IP> --tcp-port 7000 -v
+```
+
+Verificare conectivitate simpla din Raspberry:
+
+```bash
+nc -vz -w 3 <WINDOWS_TAILSCALE_IP> 7000
+```
+
+Daca apare `no matching peer` la `tailscale status`, IP-ul folosit nu apartine niciunui peer activ. Foloseste IP-ul real din:
+
+```bash
+tailscale status
+tailscale ping <WINDOWS_HOSTNAME>
+```
+
+Pentru timeout pe `nc`, verifica si firewall-ul Windows pentru portul TCP 7000 (Inbound rule).

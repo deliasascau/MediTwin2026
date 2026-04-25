@@ -62,7 +62,7 @@ static bool      _fanApplied     = false;
 static uint32_t  _fanStartMs     = 0;
 static uint32_t  _recoverSinceMs = 0;
 static uint32_t  _bootMs         = 0;
-static uint32_t  _manualFanUntilMs = 0;  // fan fortat manual din '+'
+static uint32_t  _manualFanUntilMs = 0;  // fan fortat manual; UINT32_MAX = pana la FAN_OFF
 static bool      _hcEnabled        = false; // HC alarm ON/OFF controlat de Pi (CMD:HC_ON/HC_OFF)
 static uint32_t  _ldrTrigSinceMs   = 0;     // momentul cand LDR a depasit pragul prima data
 // timestamps ultimei rulari per task (pentru afisare paralelism)
@@ -907,11 +907,11 @@ static void taskUart() {
     uint32_t now = millis();
     switch (cmd) {
         case PI_CMD_FAN_ON:
-            _manualFanUntilMs = now + 30000;
+            _manualFanUntilMs = UINT32_MAX;
             _fanForced  = true;
             _fanStartMs = now;
             setFanManaged(true);
-            Serial.println("[PI] CMD:FAN_ON — fan pornit 30s");
+            Serial.println("[PI] CMD:FAN_ON — fan pornit pana la CMD:FAN_OFF");
             break;
         case PI_CMD_FAN_OFF:
             _manualFanUntilMs = 0;
@@ -1038,11 +1038,11 @@ void loop() {
         case 'L': case 'l': testLed();    break;
         case 'F': case 'f': testFan();    break;
         case '+':
-            _manualFanUntilMs = millis() + 30000;
+            _manualFanUntilMs = UINT32_MAX;
             _fanForced  = true;
             _fanStartMs = millis();
             setFanManaged(true);
-            Serial.println("  Fan ON (30s)");
+            Serial.println("  Fan ON (ramane pornit pana la '-')");
             break;
         case '-':
             _manualFanUntilMs = 0;
